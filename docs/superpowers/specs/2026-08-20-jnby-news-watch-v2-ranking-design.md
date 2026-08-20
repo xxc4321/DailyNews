@@ -1,7 +1,7 @@
 # JNBY News Watch V2 评分与 Customer Voice 窗口增量设计
 
 - 日期：2026-08-20
-- 状态：待 Joe 书面复核
+- 状态：已按 Joe 真实测试反馈批准继续
 - 前置基线：V1 提交 `2233c5a5815fcc1c3ec01073fe6be435056ba6bf`
 - 触发来源：2026-08-20 真实 72 小时 dry-run，Top 10 中 9 条来自同一媒体，且出现 Mattel、Home Depot、Lowe’s 等岗位相关性偏弱内容；Customer Voice 为 0。
 
@@ -14,6 +14,7 @@
 3. Top N 增加单一发布者占比上限。
 4. 赞助/商业软文默认降入候补区。
 5. Customer Voice 使用独立 30 天滚动窗口，并清楚报告“未采集到”、“被安全门拒绝”和“无法形成主题”的差别。
+6. 根据已有海外布局和 Joe 指定的欧洲、法国/巴黎、日本、东南亚生成独立区域查询，并对合格新闻做区域优先重排。
 
 本次不会为凑满 10/5 而降低证据门，不新增未经 Joe 批准的社媒渠道，不修改飞书目标或 Hermes cron。
 
@@ -85,13 +86,55 @@
 - 有原始评论但全被安全门拒绝时，显示拒绝数和主要原因，不放宽阀门。
 - 该改动不会让当前 HTTP 403 的 Bluesky 自动产生数据；它只保证时间窗口和缺口解释正确。新客评渠道仍需 Joe 单独批准。
 
-## 6. DeepSeek 边界
+## 6. 区域检索通道与优先重排
+
+### 6.1 市场分组
+
+将“已有布局”和“当前重点”分开建模，不把日本误写成已证实的 JNBY 布局国家：
+
+- `overseas_layout`：Germany、Indonesia、Lithuania、Georgia、Australia、Malaysia。
+- `priority_regions`：Europe、France、Paris、Japan、Southeast Asia。
+- `candidate_markets`：France、United Kingdom、Italy，并保留 Joe 后续修改能力。
+- 东南亚区域映射至少包含 Indonesia、Malaysia、Singapore、Thailand、Vietnam、Philippines。
+- 欧洲区域映射至少包含 France/Paris、Germany、Italy、United Kingdom、Lithuania、Georgia。
+- 日本别名至少包含 Japan、日本、Tokyo/東京、Osaka/大阪。
+
+地区实体从标题、摘要、正文和结构化实体提取，输出具体国家/城市和所属区域组。
+
+### 6.2 区域查询通道
+
+不再将临时焦点粗略截断为前 3 个并附加到所有查询。改为有上限的独立 query lanes：
+
+1. JNBY/集团品牌全球通道。
+2. 欧洲时尚零售与门店通道。
+3. 法国/巴黎法语门店、开业、物流和关税通道。
+4. 日本英文/日语时尚零售、门店和消费者体验通道。
+5. 东南亚以及印尼/马来西亚时尚零售、供应链和门店通道。
+6. 其他已布局海外国家通道。
+
+每个通道包含区域词 + 服装/时尚词 + 至少一个岗位业务词，总查询数默认上限 12，避免对发现渠道造成过多请求。新增 `ja` 语言和 Google News 日本 locale，但日文输出仍由 DeepSeek 生成中文摘要并保留原标题。
+
+### 6.3 区域优先重排
+
+- 先应用证据门、行业硬门和最低相关度，区域优先不能让低质量内容进榜。
+- 对已合格新闻进行稳定重排：Top N 中 `priority_regions` 或 `overseas_layout` 命中项的目标占比为 60%。
+- 优先顺序：明确临时焦点 > France/Paris > Europe > Japan > Southeast Asia > 其他已布局国家 > 其他合格新闻。
+- 该占比只在存在足够合格区域新闻时生效；不足时少发或用其他合格新闻补位，同时输出每个区域的“合格候选/入选/缺口”统计。
+- 发布者最多 3 条的限制在区域重排中仍然生效。
+
+### 6.4 区域信源治理
+
+- 首先使用已批准 S0/S1 直接源和回源成功的 S2 发现。
+- 对欧洲、日本、东南亚进行真实可访问性调研，新媒体只先形成候选清单。
+- 任何新域名升级为 S1 前，必须向 Joe 提交来源名、地区、内容类型、访问方式、所有者/编辑透明度和选用理由，经批准后才进正式白名单。
+
+## 7. DeepSeek 边界
 
 本次不将 DeepSeek 语义分直接并入最终相关度。原因是先修复已确认的确定性词边界、硬门和来源多样性问题，再根据真实对比样本决定是否加入 20% 左右的语义校准。
 
 DeepSeek 继续负责中文摘要、语义标签、冲突标记和影响类型；不能修改信源白名单、证据等级或投递成功状态。
 
-## 7. 配置与兼容性
+## 8. 配置与兼容性
 
 `profile.yaml` 新增/更新：
 
@@ -100,13 +143,15 @@ minimum_news_score: 35
 max_items_per_publisher: 3
 review_window_days: 30
 allow_sponsored_formal: false
+max_discovery_queries: 12
+priority_region_share: 0.6
 ```
 
 - Skill 默认配置版本升级。
 - 现有 Hermes 运行配置由本次部署做增量同步，不覆盖焦点、密钥、状态或 Joe 的其他自定义项。
 - CLI、JSON 主体结构、Hermes 脚本名、cron ID/时间/投递目标保持不变。JSON 只增加 Customer Voice 诊断字段。
 
-## 8. 测试验收
+## 9. 测试验收
 
 ### 8.1 回归测试
 
@@ -120,15 +165,20 @@ allow_sponsored_formal: false
 8. 原始客评为 0、全部被拒绝、可形成主题三种情况报告不同的诊断。
 9. 新闻与评论单批失败相互隔离。
 10. 原有安全、证据、DeepSeek、Hermes 和投递幂等测试全部通过。
+11. 临时焦点不再因为位于第 4 个之后而丢失；生成查询总数不超过 12。
+12. 日本/日本语、巴黎/法语和东南亚国家可被归一化到正确区域组。
+13. 存在足够合格区域新闻时，Top 10 至少 6 条命中优先/已布局区域；不足时报告缺口而不伪造区域属性。
+14. 不能因区域命中让未通过行业硬门或证据门的内容进入正式区。
 
 ### 8.2 真实对比
 
 - 使用与 2026-08-20 基线相同的 72 小时新闻条件和 30 天 Customer Voice 条件，执行新的 `dry-run`。
 - 对比正式条数、偏题条数、发布者占比、赞助内容位置、Customer Voice 采集/拒绝/主题数和 DeepSeek 费用。
 - 预期 Mattel、Home Depot DIY、Lowe’s DIY 和赞助 EDI 不再进正式 Top 10。
+- 区域对比使用 Europe、France/Paris、Japan、Southeast Asia 和已布局海外国家条件；报告必须显示具体地区命中和缺口。
 - 如果正式新闻少于 10 条，这是符合设计的结果，不用低质量内容补齐。
 
-## 9. 回滚
+## 10. 回滚
 
 - 代码回滚到 V1 最后提交即可恢复旧行为。
 - 运行配置新字段均有代码默认值；删除新字段可恢复默认，不影响密钥、焦点历史和 SQLite 已有数据。
