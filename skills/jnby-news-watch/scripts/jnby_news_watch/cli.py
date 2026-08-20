@@ -32,6 +32,7 @@ from .sources import (
     YouTubeApiAdapter,
 )
 from .state import StateStore
+from .verify import DiscoveryVerifier
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -124,8 +125,8 @@ def _review_salt(home: Path) -> str:
     return path.read_text(encoding="ascii").strip()
 
 
-def _adapters(home: Path) -> dict:
-    fetcher = SafeFetcher()
+def _adapters(home: Path, fetcher: SafeFetcher | None = None) -> dict:
+    fetcher = fetcher or SafeFetcher()
     return {
         "rss": RssAdapter(fetcher),
         "page_links": PageLinksAdapter(fetcher),
@@ -135,7 +136,9 @@ def _adapters(home: Path) -> dict:
         "csv_review": CsvReviewAdapter(fetcher, author_salt=_review_salt(home)),
         "public_post_discovery": PublicPostDiscoveryAdapter(fetcher),
         "tavily": TavilyAdapter(),
-        "bluesky_public": BlueskyPublicAdapter(),
+        "bluesky_public": BlueskyPublicAdapter(
+            fetcher, author_salt=_review_salt(home)
+        ),
         "youtube_api": YouTubeApiAdapter(),
         "reddit_oauth": RedditOAuthAdapter(),
     }
@@ -145,7 +148,19 @@ def build_pipeline(home: Path | None = None) -> Pipeline:
     skill_root = Path(__file__).parents[2]
     config = initialize_runtime(skill_root, home)
     state = StateStore(config.home / "data" / "state.sqlite3")
-    return Pipeline(config, state, _adapters(config.home))
+    fetcher = SafeFetcher()
+    trusted = config.sources.get("trusted_domains", {})
+    verifier = DiscoveryVerifier(
+        fetcher,
+        s0_domains=trusted.get("S0", []),
+        s1_domains=trusted.get("S1", []),
+    )
+    return Pipeline(
+        config,
+        state,
+        _adapters(config.home, fetcher),
+        verifier=verifier,
+    )
 
 
 def _configured_keys_from_file(path: Path) -> set[str]:

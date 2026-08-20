@@ -146,6 +146,34 @@ class StateStore:
             if cursor.rowcount != 1:
                 raise KeyError(f"unknown idempotency_key: {idempotency_key}")
 
+    def mark_delivery_failure(self, idempotency_key: str) -> None:
+        with self._connect() as connection:
+            cursor = connection.execute(
+                "UPDATE deliveries SET status = 'failed' WHERE idempotency_key = ?",
+                (idempotency_key,),
+            )
+            if cursor.rowcount != 1:
+                raise KeyError(f"unknown idempotency_key: {idempotency_key}")
+
+    def get_delivery(self, idempotency_key: str) -> dict:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM deliveries WHERE idempotency_key = ?",
+                (idempotency_key,),
+            ).fetchone()
+        if row is None:
+            raise KeyError(f"unknown idempotency_key: {idempotency_key}")
+        return dict(row)
+
+    def retry_failed_delivery(self, idempotency_key: str) -> bool:
+        with self._connect() as connection:
+            cursor = connection.execute(
+                "UPDATE deliveries SET status = 'pending', delivered_at = NULL "
+                "WHERE idempotency_key = ? AND status = 'failed'",
+                (idempotency_key,),
+            )
+        return cursor.rowcount == 1
+
     def last_successful_delivery(self, target: str) -> datetime | None:
         with self._connect() as connection:
             row = connection.execute(

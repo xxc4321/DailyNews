@@ -180,3 +180,38 @@ def test_all_network_sources_failed_is_not_delivery_eligible(tmp_path):
     assert result.delivery_eligible is False
     assert result.news == ()
     assert any("全部信源" in warning for warning in result.warnings)
+
+
+def test_low_relevance_verified_news_stays_in_candidate_section(tmp_path):
+    class LowRelevanceAdapter:
+        def collect(self, source, queries, time_window):
+            item = RawCandidate(
+                id="generic-1",
+                title="Executive appointment announced",
+                original_url="https://trusted.example.com/generic-1",
+                published_at=NOW,
+                source_id="trusted",
+                source_name="Trusted",
+                source_tier="S1",
+                channel="news",
+                language="en",
+                summary="A company appointed a new executive.",
+                verified=True,
+            )
+            return SourceResult(source_id=source["id"], ok=True, candidates=(item,))
+
+    config = runtime(tmp_path)
+    pipeline = Pipeline(
+        config,
+        StateStore(config.home / "state.sqlite3"),
+        {"fixture": LowRelevanceAdapter()},
+        enricher=Enricher(),
+        report_root=tmp_path / "reports",
+        clock=lambda: NOW,
+    )
+
+    result = pipeline.run(RunRequest(mode="manual", news_limit=10, review_limit=5))
+
+    assert result.news == ()
+    assert len(result.candidates) == 1
+    assert "相关度低于" in result.candidates[0].gate_reason

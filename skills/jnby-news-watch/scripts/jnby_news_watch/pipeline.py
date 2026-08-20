@@ -37,17 +37,35 @@ def _focuses(payload: dict) -> list[FocusRecord]:
 
 
 def _queries(profile: dict, focuses: list[FocusRecord]) -> list[Query]:
-    brands = [str(value) for value in profile.get("brands", [])[:5]]
-    markets = [
-        str(value)
-        for value in (
-            profile.get("markets", {}).get("confirmed", [])
-            + profile.get("markets", {}).get("candidate", [])
-        )[:8]
+    base_queries = {
+        "zh": (
+            '"江南布衣" OR JNBY OR 速写 服装 零售',
+            '欧洲 服装 零售 门店 物流',
+            '服装 供应链 关税 库存',
+        ),
+        "en": (
+            'JNBY OR "Jiangnan Buyi" OR "CROQUIS fashion" retail',
+            'fashion retail store opening France Italy Europe',
+            'apparel supply chain logistics tariff inventory Europe',
+        ),
+        "fr": (
+            'JNBY OR "Jiangnan Buyi" mode magasin',
+            'mode commerce ouverture magasin France Italie',
+            'habillement logistique fournisseur droits de douane',
+        ),
+        "it": (
+            'JNBY OR "Jiangnan Buyi" moda negozio',
+            'moda retail apertura negozio Francia Italia',
+            'abbigliamento logistica fornitori dazi doganali',
+        ),
+    }
+    focus_terms = list(dict.fromkeys(term for focus in focuses for term in focus.terms))[:3]
+    suffix = " " + " ".join(f'"{term}"' for term in focus_terms) if focus_terms else ""
+    return [
+        Query(text + suffix, language)
+        for language in profile.get("languages", ["en"])
+        for text in base_queries.get(language, base_queries["en"])
     ]
-    focus_terms = [term for focus in focuses for term in focus.terms[:8]]
-    phrase = " ".join(dict.fromkeys([*brands, *markets, *focus_terms, "fashion retail"]))
-    return [Query(phrase, language) for language in profile.get("languages", ["en"])]
 
 
 def _cluster_hash(cluster: NewsCluster) -> str:
@@ -93,6 +111,7 @@ class Pipeline:
         adapters: dict[str, SourceAdapter],
         *,
         enricher=None,
+        verifier=None,
         report_root: Path | None = None,
         clock: Callable[[], datetime] | None = None,
     ):
@@ -100,6 +119,7 @@ class Pipeline:
         self.state = state
         self.adapters = adapters
         self.enricher = enricher or DeepSeekClient()
+        self.verifier = verifier
         self.report_root = Path(report_root or config.home / "reports")
         self.clock = clock or (lambda: datetime.now(timezone.utc))
 
@@ -225,9 +245,21 @@ class Pipeline:
 
             formal_scored: list[tuple[NewsCluster, GateDecision, ScoreResult]] = []
             candidate_scored: list[tuple[NewsCluster, GateDecision, ScoreResult]] = []
-            for cluster in cluster_news(list(batch.candidates)):
+            candidate_items = list(batch.candidates)
+            if self.verifier is not None:
+                candidate_items = self.verifier.verify_batch(candidate_items, window)
+            minimum_news_score = int(self.config.profile.get("minimum_news_score", 20))
+            for cluster in cluster_news(candidate_items):
                 decision = evaluate_news_gate(cluster, GatePolicy())
                 score = score_news(cluster.primary, self.config.profile, focuses, at=now)
+                if decision.eligible and score.total < minimum_news_score:
+                    decision = GateDecision(
+                        False,
+                        "candidate",
+                        decision.evidence_grade,
+                        decision.reasons
+                        + (f"相关度低于正式区阈值 {minimum_news_score}",),
+                    )
                 record = (cluster, decision, score)
                 if decision.eligible:
                     if (

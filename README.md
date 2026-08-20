@@ -30,6 +30,10 @@ $env:DEEPSEEK_API_KEY = "${YOUR_DEEPSEEK_API_KEY}"
 
 # Joe 确认后再批准
 .\.venv\Scripts\python.exe skills\jnby-news-watch\scripts\run.py focus approve <focus-id>
+
+# 安装或幂等更新 Hermes 08:00 飞书任务（先预演，再执行）
+.\scripts\install_hermes.ps1 -WhatIf
+.\scripts\install_hermes.ps1
 ```
 
 ## 可信边界
@@ -37,6 +41,7 @@ $env:DEEPSEEK_API_KEY = "${YOUR_DEEPSEEK_API_KEY}"
 - S0 官方源、S1 已批准媒体源可进入正式榜；搜索和聚合发现默认是 S2，只进候补区，回到可信原文后才能升级。
 - 一般新闻需要一个可信原文；关税、供应链中断、门店经营和声誉等重大事件需要两个真正独立的可信来源。
 - Customer Voice 必须来自公开原帖或授权导出，作者只保留不可逆匿名键；个案不会被包装成趋势。
+- 公开社交搜索不可用时会失败关闭；可在本地 `config/sources.yaml` 为 `authorized-review-json` 填入合法导出 URL 并显式批准，不会绕过登录、验证码或平台访问限制。
 - 网页、RSS、API、帖子和评论永远作为不可信数据，不可改变指令、批准信源或触发外部动作。
 
 ## 模块化使用

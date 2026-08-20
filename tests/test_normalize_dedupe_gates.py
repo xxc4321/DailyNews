@@ -140,6 +140,22 @@ def test_search_only_item_is_candidate_grade_c():
     assert decision.evidence_grade == "C"
 
 
+def test_listing_link_with_inferred_date_stays_candidate():
+    cluster = cluster_news(
+        [
+            news(
+                "official-listing",
+                "https://jnby.com/news/item",
+                tier="S0",
+                metadata={"body": "official listing item", "date_inferred": True},
+            )
+        ]
+    )[0]
+    decision = evaluate_news_gate(cluster, GatePolicy())
+    assert decision.eligible is False
+    assert decision.bucket == "candidate"
+
+
 def test_discovery_copy_does_not_satisfy_high_impact_two_source_rule():
     cluster = cluster_news(
         [

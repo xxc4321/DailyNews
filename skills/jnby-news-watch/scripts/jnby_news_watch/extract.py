@@ -40,7 +40,7 @@ class _ArticleParser(HTMLParser):
         self.title_parts: list[str] = []
         self.visible_parts: list[str] = []
         self.in_title = False
-        self.skip_depth = 0
+        self.skip_tags: list[str] = []
         self.canonical = ""
         self.language = ""
         self.published = ""
@@ -48,23 +48,26 @@ class _ArticleParser(HTMLParser):
         self.flags: set[str] = set()
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        tag_name = tag.lower()
         values = {key.lower(): (value or "") for key, value in attrs}
-        if tag.lower() == "html":
+        if tag_name == "html":
             self.language = values.get("lang", "").split("-", 1)[0].lower()
         hidden = (
-            tag.lower() in {"script", "style", "noscript", "template", "svg"}
+            tag_name in {"script", "style", "noscript", "template", "svg"}
             or "hidden" in values
             or values.get("aria-hidden", "").lower() == "true"
             or "display:none" in values.get("style", "").replace(" ", "").lower()
             or "visibility:hidden" in values.get("style", "").replace(" ", "").lower()
         )
-        if hidden:
-            self.skip_depth += 1
-        if tag.lower() == "title" and self.skip_depth == 0:
+        if (hidden or self.skip_tags) and tag_name not in {
+            "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source", "track", "wbr"
+        }:
+            self.skip_tags.append(tag_name)
+        if tag_name == "title" and not self.skip_tags:
             self.in_title = True
-        if tag.lower() == "link" and values.get("rel", "").lower() == "canonical":
+        if tag_name == "link" and values.get("rel", "").lower() == "canonical":
             self.canonical = values.get("href", "").strip()
-        if tag.lower() == "meta":
+        if tag_name == "meta":
             key = (values.get("property") or values.get("name")).lower()
             content = values.get("content", "").strip()
             if key in {"article:published_time", "date", "datepublished"}:
@@ -73,21 +76,15 @@ class _ArticleParser(HTMLParser):
                 self.author = content
 
     def handle_endtag(self, tag: str) -> None:
-        if tag.lower() == "title":
+        tag_name = tag.lower()
+        if tag_name == "title":
             self.in_title = False
-        if self.skip_depth and tag.lower() in {
-            "script",
-            "style",
-            "noscript",
-            "template",
-            "svg",
-            "div",
-            "span",
-        }:
-            self.skip_depth -= 1
+        if self.skip_tags and tag_name in self.skip_tags:
+            reverse_index = self.skip_tags[::-1].index(tag_name)
+            del self.skip_tags[len(self.skip_tags) - reverse_index - 1 :]
 
     def handle_data(self, data: str) -> None:
-        if self.skip_depth:
+        if self.skip_tags:
             if INSTRUCTION_PATTERN.search(data):
                 self.flags.add("hidden_instruction")
             return

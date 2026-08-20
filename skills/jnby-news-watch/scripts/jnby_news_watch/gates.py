@@ -59,6 +59,12 @@ def evaluate_news_gate(cluster: NewsCluster, policy: GatePolicy) -> GateDecision
         reasons.append("No trusted original source; discovery/search-only evidence")
         return GateDecision(False, "candidate", grade, tuple(reasons))
 
+    if cluster.primary.metadata.get("date_inferred") and not cluster.primary.metadata.get(
+        "date_verified"
+    ):
+        reasons.append("Publication date was inferred from a listing page and is not verified")
+        return GateDecision(False, "candidate", grade, tuple(reasons))
+
     if any(item.metadata.get("safe_clean") is False for item in cluster.items):
         reasons.append("Safety cleaning failed")
         return GateDecision(False, "rejected", grade, tuple(reasons))

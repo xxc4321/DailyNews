@@ -1,9 +1,10 @@
-version: 1
+version: 2
 timezone: Asia/Shanghai
 languages: [zh, en, fr, it]
 output_language: zh
 default_news_limit: 10
 default_review_limit: 5
+minimum_news_score: 20
 backfill_hours: 72
 brands:
   - JNBY

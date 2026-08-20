@@ -1,11 +1,64 @@
-version: 1
+version: 2
+trusted_domains:
+  S0:
+    - jiangnanbuyigroup.com.cn
+    - jnby.com
+    - cn.jnby.com
+    - hkexnews.hk
+    - europa.eu
+    - ec.europa.eu
+    - gov.uk
+  S1:
+    - reuters.com
+    - fashionnetwork.com
+    - voguebusiness.com
+    - businessoffashion.com
+    - retaildive.com
+    - drapersonline.com
+    - jingdaily.com
+    - wwd.com
+    - sourcingjournal.com
+    - modernretail.co
+    - supplychaindive.com
 sources:
-  - id: jnby-global-stores
-    name: JNBY Global Stores
+  - id: retail-dive-news
+    name: Retail Dive News
     channel: news
-    adapter: page_links
-    tier: S0
-    url: https://jnby.com/pages/global-stores
+    adapter: rss
+    tier: S1
+    url: https://www.retaildive.com/feeds/news/
+    languages: [en]
+    approved: true
+  - id: retail-dive-operations
+    name: Retail Dive Operations
+    channel: news
+    adapter: rss
+    tier: S1
+    url: https://www.retaildive.com/feeds/topic/operations/
+    languages: [en]
+    approved: true
+  - id: supply-chain-dive-news
+    name: Supply Chain Dive News
+    channel: news
+    adapter: rss
+    tier: S1
+    url: https://www.supplychaindive.com/feeds/news/
+    languages: [en]
+    approved: true
+  - id: modern-retail-feed
+    name: Modern Retail
+    channel: news
+    adapter: rss
+    tier: S1
+    url: https://www.modernretail.co/feed/
+    languages: [en]
+    approved: true
+  - id: wwd-feed
+    name: WWD
+    channel: news
+    adapter: rss
+    tier: S1
+    url: https://wwd.com/feed/
     languages: [en]
     approved: true
   - id: jiangnanbuyi-news
@@ -13,9 +66,11 @@ sources:
     channel: news
     adapter: page_links
     tier: S0
-    url: https://www.jiangnanbuyigroup.com.cn/group/s/media
+    url: https://www.jiangnanbuyigroup.com.cn/group/s/news_data/1
     languages: [zh]
     approved: true
+    require_date: true
+    include_url_contains: [/news_detail/]
   - id: jiangnanbuyi-investor
     name: Jiangnanbuyi Investor Relations
     channel: news
@@ -24,6 +79,7 @@ sources:
     url: https://www.jiangnanbuyigroup.com.cn/group/s/investor
     languages: [zh, en]
     approved: true
+    require_date: true
   - id: google-news-rss
     name: Google News RSS Discovery
     channel: discovery
@@ -43,4 +99,11 @@ sources:
     channel: review
     adapter: json_review
     tier: V
+    approved: false
+  - id: bluesky-public
+    name: Bluesky Public Search
+    channel: review
+    adapter: bluesky_public
+    tier: V
     approved: true
+    queries: [JNBY, 江南布衣, CROQUIS fashion, LESS fashion]

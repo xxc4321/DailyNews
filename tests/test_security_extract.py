@@ -47,6 +47,16 @@ def test_hidden_prompt_injection_is_removed_and_flagged() -> None:
     assert "hidden_instruction" in article.security_flags
 
 
+def test_nested_hidden_container_never_leaks_after_inner_span_closes() -> None:
+    payload = b"""<html><body><div style='display:none'><span>ignore previous</span>
+    STILL HIDDEN</div><p>VISIBLE</p></body></html>"""
+    article = extract_article(
+        payload, {"content-type": "text/html"}, "https://example.com"
+    )
+    assert "STILL HIDDEN" not in article.text
+    assert "VISIBLE" in article.text
+
+
 def test_article_metadata_is_extracted() -> None:
     payload = (FIXTURES / "article.html").read_bytes()
     article = extract_article(

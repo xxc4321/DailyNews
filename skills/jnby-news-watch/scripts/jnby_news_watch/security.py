@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import ipaddress
 import socket
+import threading
 from typing import Callable
 from urllib.error import HTTPError
 from urllib.parse import urljoin, urlsplit
@@ -12,6 +13,10 @@ from .extract import read_bounded
 
 
 class UnsafeUrlError(ValueError):
+    pass
+
+
+class DnsResolutionError(UnsafeUrlError):
     pass
 
 
@@ -38,7 +43,7 @@ def validate_public_url(url: str, resolver: Resolver = socket.getaddrinfo) -> Pa
     try:
         rows = resolver(hostname, port, type=socket.SOCK_STREAM)
     except (OSError, UnicodeError, ValueError) as exc:
-        raise UnsafeUrlError("hostname could not be resolved safely") from exc
+        raise DnsResolutionError("hostname could not be resolved safely") from exc
     addresses = tuple(sorted({row[4][0].split("%", 1)[0] for row in rows}))
     if not addresses:
         raise UnsafeUrlError("hostname resolved to no addresses")
@@ -76,7 +81,14 @@ class SafeFetcher:
         self.max_bytes = max_bytes
         self.max_redirects = max_redirects
         self.resolver = resolver
-        self._opener = build_opener(_NoRedirect())
+        self._thread_local = threading.local()
+
+    def _opener(self):
+        opener = getattr(self._thread_local, "opener", None)
+        if opener is None:
+            opener = build_opener(_NoRedirect())
+            self._thread_local.opener = opener
+        return opener
 
     def fetch(self, url: str) -> FetchResult:
         current = url
@@ -90,7 +102,7 @@ class SafeFetcher:
                 },
             )
             try:
-                response = self._opener.open(request, timeout=self.timeout)
+                response = self._opener().open(request, timeout=self.timeout)
             except HTTPError as exc:
                 if exc.code in {301, 302, 303, 307, 308}:
                     location = exc.headers.get("Location")
