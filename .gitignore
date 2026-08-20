@@ -1,0 +1,25 @@
+.venv/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+
+# Runtime state and generated reports
+.jnby-news-watch/
+reports/
+*.sqlite
+*.sqlite3
+*.db
+
+# Secrets and local overrides
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# Editor and OS noise
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

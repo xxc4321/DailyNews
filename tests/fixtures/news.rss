@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Fashion Wire</title>
+    <link>https://example.com/</link>
+    <item>
+      <title>Paris fashion retailer opens a new store</title>
+      <link>https://example.com/paris-store?utm_source=rss</link>
+      <guid>fashion-wire-1</guid>
+      <pubDate>Wed, 19 Aug 2026 08:30:00 GMT</pubDate>
+      <description>Retail expansion, logistics and launch activity in Paris.</description>
+    </item>
+  </channel>
+</rss>

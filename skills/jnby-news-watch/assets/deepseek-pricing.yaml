@@ -1,0 +1,14 @@
+version: 1
+checked_at: 2026-08-20
+source: https://api-docs.deepseek.com/quick_start/pricing/
+currency: USD
+per_million_tokens:
+  deepseek-v4-flash:
+    off_peak: {cache_hit_input: 0.007, cache_miss_input: 0.22, output: 0.66}
+    peak: {cache_hit_input: 0.014, cache_miss_input: 0.44, output: 1.32}
+  deepseek-v4-pro:
+    off_peak: {cache_hit_input: 0.022, cache_miss_input: 0.66, output: 1.98}
+    peak: {cache_hit_input: 0.044, cache_miss_input: 1.32, output: 3.96}
+peak_utc:
+  - {start: "01:00", end: "04:00"}
+  - {start: "06:00", end: "10:00"}

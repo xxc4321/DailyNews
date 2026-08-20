@@ -1,0 +1,4 @@
+interface:
+  display_name: "JNBY News Watch"
+  short_description: "Track verified JNBY news and customer voice"
+  default_prompt: "Use $jnby-news-watch to generate today's verified JNBY intelligence briefing."

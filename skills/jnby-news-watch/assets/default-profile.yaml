@@ -1,0 +1,40 @@
+version: 1
+timezone: Asia/Shanghai
+languages: [zh, en, fr, it]
+output_language: zh
+default_news_limit: 10
+default_review_limit: 5
+backfill_hours: 72
+brands:
+  - JNBY
+  - 江南布衣
+  - CROQUIS
+  - 速写
+  - LESS
+  - jnby by JNBY
+  - POMME DE TERRE
+  - JNBYHOME
+  - onmygame
+  - RE;RE;RE;LAB
+markets:
+  confirmed: [China, Germany, Indonesia, Lithuania, Georgia, Australia, Malaysia]
+  candidate: [France, United Kingdom, Italy]
+weights:
+  company_brand_competitor: 22
+  market_location: 18
+  apparel_design_material: 12
+  retail_store_customer: 16
+  supplier_logistics_tariff_inventory: 14
+  wholesale_storytelling_training_data: 10
+  freshness_business_impact: 8
+review_weights:
+  relevance: 30
+  specificity: 20
+  recurrence: 20
+  actionability: 15
+  freshness: 10
+  engagement: 5
+focus:
+  final_share_cap: 25
+  default_days: 30
+  default_decay_days: 7

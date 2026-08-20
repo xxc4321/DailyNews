@@ -1,0 +1,46 @@
+version: 1
+sources:
+  - id: jnby-global-stores
+    name: JNBY Global Stores
+    channel: news
+    adapter: page_links
+    tier: S0
+    url: https://jnby.com/pages/global-stores
+    languages: [en]
+    approved: true
+  - id: jiangnanbuyi-news
+    name: Jiangnanbuyi Official News
+    channel: news
+    adapter: page_links
+    tier: S0
+    url: https://www.jiangnanbuyigroup.com.cn/group/s/media
+    languages: [zh]
+    approved: true
+  - id: jiangnanbuyi-investor
+    name: Jiangnanbuyi Investor Relations
+    channel: news
+    adapter: page_links
+    tier: S0
+    url: https://www.jiangnanbuyigroup.com.cn/group/s/investor
+    languages: [zh, en]
+    approved: true
+  - id: google-news-rss
+    name: Google News RSS Discovery
+    channel: discovery
+    adapter: google_news_rss
+    tier: S2
+    languages: [zh, en, fr, it]
+    approved: true
+  - id: gdelt-doc
+    name: GDELT DOC Discovery
+    channel: discovery
+    adapter: gdelt
+    tier: S2
+    languages: [zh, en, fr, it]
+    approved: true
+  - id: authorized-review-json
+    name: Authorized Review JSON Import
+    channel: review
+    adapter: json_review
+    tier: V
+    approved: true

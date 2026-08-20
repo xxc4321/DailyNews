@@ -1,0 +1,13 @@
+{
+  "items": [
+    {
+      "id": "review-1",
+      "platform": "authorized-shop",
+      "url": "https://reviews.example.com/r/1",
+      "published_at": "2026-08-19T09:00:00+02:00",
+      "author": "public-user-123",
+      "text": "The fabric feels premium, but the Paris store pickup was slow.",
+      "language": "en"
+    }
+  ]
+}
