@@ -1,2 +1,3 @@
 feedparser>=6.0.11,<7
 PyYAML>=6.0.2,<7
+tzdata>=2026.1

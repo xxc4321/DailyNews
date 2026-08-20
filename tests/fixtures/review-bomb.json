@@ -1,0 +1,5 @@
+[
+  {"id":"bomb-1","platform":"social","url":"https://reviews.example/bomb1","published_at":"2026-08-20T07:30:00Z","author":"spam1","text":"BUY NOW promo promo promo","language":"en","metadata":{"access":"public","theme_terms":["promotion"],"marketing":true,"manipulation_risk":30}},
+  {"id":"bomb-2","platform":"social","url":"https://reviews.example/bomb2","published_at":"2026-08-20T07:31:00Z","author":"spam2","text":"BUY NOW promo promo promo","language":"en","metadata":{"access":"public","theme_terms":["promotion"],"marketing":true,"manipulation_risk":30}},
+  {"id":"bomb-3","platform":"social","url":"https://reviews.example/bomb3","published_at":"2026-08-20T07:32:00Z","author":"spam3","text":"BUY NOW promo promo promo","language":"en","metadata":{"access":"public","theme_terms":["promotion"],"marketing":true,"manipulation_risk":30}}
+]

@@ -57,6 +57,13 @@ CREATE TABLE IF NOT EXISTS source_health (
     payload_json TEXT NOT NULL,
     checked_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS delivered_clusters (
+    target TEXT NOT NULL,
+    cluster_id TEXT NOT NULL,
+    content_hash TEXT NOT NULL,
+    delivered_at TEXT NOT NULL,
+    PRIMARY KEY(target, cluster_id, content_hash)
+);
 """
 
 
@@ -146,3 +153,101 @@ class StateStore:
                 (target,),
             ).fetchone()
         return datetime.fromisoformat(row["delivered_at"]) if row else None
+
+    def upsert_item(
+        self,
+        *,
+        channel: str,
+        item_id: str,
+        payload: dict,
+        cluster_id: str,
+        seen_at: datetime,
+    ) -> None:
+        if seen_at.tzinfo is None or seen_at.utcoffset() is None:
+            raise ValueError("seen_at must be timezone-aware")
+        table = {"news": "news_items", "review": "review_items"}.get(channel)
+        if table is None:
+            raise ValueError("unsupported item channel")
+        with self._connect() as connection:
+            connection.execute(
+                f"INSERT INTO {table}(item_id, payload_json, cluster_id, first_seen_at) "
+                "VALUES (?, ?, ?, ?) ON CONFLICT(item_id) DO UPDATE SET "
+                "payload_json=excluded.payload_json, cluster_id=excluded.cluster_id",
+                (
+                    item_id,
+                    json.dumps(payload, ensure_ascii=False),
+                    cluster_id,
+                    seen_at.isoformat(),
+                ),
+            )
+
+    def upsert_cluster(
+        self, *, cluster_id: str, channel: str, payload: dict, updated_at: datetime
+    ) -> None:
+        if updated_at.tzinfo is None or updated_at.utcoffset() is None:
+            raise ValueError("updated_at must be timezone-aware")
+        with self._connect() as connection:
+            connection.execute(
+                "INSERT INTO clusters(cluster_id, channel, payload_json, updated_at) VALUES (?, ?, ?, ?) "
+                "ON CONFLICT(cluster_id) DO UPDATE SET channel=excluded.channel, "
+                "payload_json=excluded.payload_json, updated_at=excluded.updated_at",
+                (
+                    cluster_id,
+                    channel,
+                    json.dumps(payload, ensure_ascii=False),
+                    updated_at.isoformat(),
+                ),
+            )
+
+    def record_source_health(self, source_id: str, payload: dict, checked_at: datetime) -> None:
+        if checked_at.tzinfo is None or checked_at.utcoffset() is None:
+            raise ValueError("checked_at must be timezone-aware")
+        with self._connect() as connection:
+            connection.execute(
+                "INSERT INTO source_health(source_id, payload_json, checked_at) VALUES (?, ?, ?) "
+                "ON CONFLICT(source_id) DO UPDATE SET payload_json=excluded.payload_json, checked_at=excluded.checked_at",
+                (source_id, json.dumps(payload, ensure_ascii=False), checked_at.isoformat()),
+            )
+
+    def mark_cluster_delivered(
+        self,
+        target: str,
+        cluster_id: str,
+        content_hash: str,
+        delivered_at: datetime,
+    ) -> None:
+        if delivered_at.tzinfo is None or delivered_at.utcoffset() is None:
+            raise ValueError("delivered_at must be timezone-aware")
+        with self._connect() as connection:
+            connection.execute(
+                "INSERT OR IGNORE INTO delivered_clusters VALUES (?, ?, ?, ?)",
+                (target, cluster_id, content_hash, delivered_at.isoformat()),
+            )
+
+    def cluster_delivery_time(
+        self, target: str, cluster_id: str, content_hash: str | None = None
+    ) -> datetime | None:
+        sql = "SELECT delivered_at FROM delivered_clusters WHERE target = ? AND cluster_id = ?"
+        params: tuple = (target, cluster_id)
+        if content_hash is not None:
+            sql += " AND content_hash = ?"
+            params += (content_hash,)
+        sql += " ORDER BY delivered_at DESC LIMIT 1"
+        with self._connect() as connection:
+            row = connection.execute(sql, params).fetchone()
+        return datetime.fromisoformat(row["delivered_at"]) if row else None
+
+    def get_cluster(self, cluster_id: str) -> dict:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT channel, payload_json, updated_at FROM clusters WHERE cluster_id = ?",
+                (cluster_id,),
+            ).fetchone()
+        if row is None:
+            raise KeyError(f"unknown cluster_id: {cluster_id}")
+        return {
+            "cluster_id": cluster_id,
+            "channel": row["channel"],
+            "payload": json.loads(row["payload_json"]),
+            "updated_at": row["updated_at"],
+        }

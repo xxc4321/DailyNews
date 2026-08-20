@@ -439,6 +439,7 @@ class JsonReviewAdapter:
                         text=text,
                         language=str(item.get("language", "en")),
                         source_id=source["id"],
+                        metadata={"access": "authorized"},
                     )
                 )
             latency = int((time.perf_counter() - started) * 1000)

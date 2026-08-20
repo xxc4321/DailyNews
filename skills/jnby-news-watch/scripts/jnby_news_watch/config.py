@@ -58,7 +58,7 @@ def initialize_runtime(
             shutil.copyfile(source, target)
     focus_path = config_dir / "focus.yaml"
     if not focus_path.exists():
-        focus_path.write_text("version: 1\nactive: []\nhistory: []\n", encoding="utf-8")
+        focus_path.write_text("version: 1\nfocuses: []\n", encoding="utf-8")
 
     StateStore(home / "data" / "state.sqlite3")
     return RuntimeConfig(
